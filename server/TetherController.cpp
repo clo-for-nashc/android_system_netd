@@ -409,9 +409,9 @@ int TetherController::setDnsForwarders(unsigned netId, char **servers, int numSe
     mDnsmasqState.update_dns_cmd = std::move(daemonCmd);
     if (mDaemonFd != -1) {
         if (mDnsmasqState.sendAllState(mDaemonFd) != 0) {
-            mDnsForwarders.clear();
-            errno = EREMOTEIO;
-            return -errno;
+            ALOGW("Failed to send DNS forwarders to dnsmasq (%s), ignoring and closing daemon fd", strerror(errno));
+            close(mDaemonFd);
+            mDaemonFd = -1;
         }
     }
     return 0;
@@ -449,7 +449,13 @@ bool TetherController::applyDnsInterfaces() {
         mDnsmasqState.update_ifaces_cmd.clear();
     } else {
         mDnsmasqState.update_ifaces_cmd = std::move(daemonCmd);
-        if (mDaemonFd != -1) return (mDnsmasqState.sendAllState(mDaemonFd) == 0);
+        if (mDaemonFd != -1) {
+            if (mDnsmasqState.sendAllState(mDaemonFd) != 0) {
+                ALOGW("Failed to update interfaces on dnsmasq (%s), ignoring and closing daemon fd", strerror(errno));
+                close(mDaemonFd);
+                mDaemonFd = -1;
+            }
+        }
     }
     return true;
 }
