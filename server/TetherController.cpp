@@ -292,7 +292,9 @@ int TetherController::startTethering(bool usingLegacyDnsProxy, int num_addrs, ch
         return -res;
     }
     const android::base::ScopeGuard attrGuard = [&] { posix_spawnattr_destroy(&attr); };
-    res = posix_spawnattr_setflags(&attr, POSIX_SPAWN_USEVFORK | POSIX_SPAWN_CLOEXEC_DEFAULT);
+    // POSIX_SPAWN_CLOEXEC_DEFAULT requires close_range(), which older kernels lack.
+    // dnsmasq closes inherited file descriptors during startup.
+    res = posix_spawnattr_setflags(&attr, POSIX_SPAWN_USEVFORK);
     if (res) {
         ALOGE("posix_spawnattr_setflags failed (%s)", strerror(res));
         return -res;
